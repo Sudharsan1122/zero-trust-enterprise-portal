@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import type { User, DeviceStatus, Resource, PolicyRule, JITRequest, SiemMetrics, PolicyDecision } from './types';
+import type { User, DeviceStatus, Resource, PolicyRule, SiemMetrics, PolicyDecision } from './types';
 import { api } from './services/api';
 import { Header } from './components/Header';
 import { LoginPage } from './components/LoginPage';
+import { DeviceBindingPage } from './components/DeviceBindingPage';
 import { AccessPortalTab } from './components/AccessPortalTab';
 import { DecisionPage } from './components/DecisionPage';
 import { DevicePostureTab } from './components/DevicePostureTab';
@@ -12,16 +13,17 @@ import { RefreshCw, AlertTriangle } from 'lucide-react';
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>('access');
+  const [activeTab, setActiveTab] = useState<string>('login');
   const [users, setUsers] = useState<User[]>([]);
   const [devices, setDevices] = useState<DeviceStatus[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [policies, setPolicies] = useState<PolicyRule[]>([]);
   const [metrics, setMetrics] = useState<SiemMetrics | null>(null);
 
-  // Active Subject Session
+  // Active Subject Session State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentDevice, setCurrentDevice] = useState<DeviceStatus | null>(null);
+  const [mfaCode, setMfaCode] = useState<string>('123456');
 
   // Most Recent Decision Result
   const [latestDecision, setLatestDecision] = useState<PolicyDecision | null>(null);
@@ -44,14 +46,6 @@ export default function App() {
       setResources(r);
       setPolicies(p);
       setMetrics(m);
-
-      if (!currentUser && u.length > 0) {
-        const defaultUser = u.find(user => user.username === 'alice.finance') || u[0];
-        setCurrentUser(defaultUser);
-        const defaultDev = d.find(dev => dev.device_id === 'DEV-CORP-01') || d[0];
-        setCurrentDevice(defaultDev);
-      }
-
       setError(null);
     } catch (err: any) {
       console.error(err);
@@ -69,27 +63,60 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleLogin = (user: User, device: DeviceStatus) => {
+  // Step 1: Login with ID, Password, and MFA
+  const handleLoginSuccess = (user: User, code: string) => {
     setCurrentUser(user);
-    setCurrentDevice(device);
+    setMfaCode(code);
     setIsAuthenticated(true);
+    // Find user's default device if available
+    const assignedDev = devices.find(d => user.assigned_devices?.includes(d.device_id)) || devices[0];
+    if (assignedDev) {
+      setCurrentDevice(assignedDev);
+    }
+    // Proceed to Step 2: Device
+    setActiveTab('device');
+    window.location.hash = '#/device';
+  };
+
+  // Step 2: Device Selection & Posture Binding
+  const handleBindDevice = (device: DeviceStatus) => {
+    setCurrentDevice(device);
+    // Proceed to Step 3: Request Access (Catalog)
     setActiveTab('access');
     window.location.hash = '#/access';
   };
 
+  // Step 3: Request Access -> Decision Generated
+  const handleDecisionGenerated = (decision: PolicyDecision, resource: Resource) => {
+    setLatestDecision(decision);
+    setLatestResource(resource);
+    // Proceed to Step 4: Verify & Give JWT Token
+    setActiveTab('decision');
+    window.location.hash = '#/decision';
+  };
+
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setCurrentUser(null);
+    setCurrentDevice(null);
+    setMfaCode('123456');
     setLatestDecision(null);
     setLatestResource(null);
     setActiveTab('login');
     window.location.hash = '';
   };
 
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    window.location.hash = `#/${tabId}`;
+  };
+
   // Sync hash in URL with active tab
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#/', '').replace('#', '');
-      if (['access', 'decision', 'devices', 'policies', 'audit'].includes(hash)) {
+      const validTabs = ['device', 'access', 'decision', 'devices', 'policies', 'audit'];
+      if (validTabs.includes(hash)) {
         if (isAuthenticated) {
           setActiveTab(hash);
         }
@@ -102,11 +129,6 @@ export default function App() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [isAuthenticated]);
-
-  const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
-    window.location.hash = `#/${tabId}`;
-  };
 
   const handleResetSystem = async () => {
     if (confirm('Reset Zero Trust portal to initial baseline seed state?')) {
@@ -133,13 +155,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#fafbfc] text-[#101828] flex flex-col font-sans">
       
-      {/* 1. Simplified Minimal Header (56px) */}
+      {/* 1. Header with Multi-Step Navigation & Remaining Pages */}
       <Header
         metrics={metrics}
         onReset={handleResetSystem}
         activeTab={activeTab}
         setActiveTab={handleTabChange}
         currentUser={currentUser}
+        currentDevice={currentDevice}
         hasDecision={latestDecision !== null}
         isAuthenticated={isAuthenticated}
         onLogout={handleLogout}
@@ -154,74 +177,75 @@ export default function App() {
           </div>
         )}
 
-        {/* Step 1: Authentication Screen (Shown first) */}
-        {!isAuthenticated ? (
+        {/* STEP 1: Login with ID, Password, and MFA */}
+        {(!isAuthenticated || !currentUser) && (
           <LoginPage
             users={users}
-            devices={devices}
-            onLogin={handleLogin}
+            onLoginSuccess={handleLoginSuccess}
           />
-        ) : (
-          <>
-            {/* Step 2: Access Catalog */}
-            {activeTab === 'access' && currentUser && currentDevice && (
-              <AccessPortalTab
-                users={users}
-                devices={devices}
-                resources={resources}
-                currentUser={currentUser}
-                currentDevice={currentDevice}
-                onSelectUser={(u, d) => {
-                  setCurrentUser(u);
-                  setCurrentDevice(d);
-                }}
-                onSwitchUser={handleLogout}
-                onDecisionGenerated={(dec, res) => {
-                  setLatestDecision(dec);
-                  setLatestResource(res);
-                  handleTabChange('decision');
-                }}
-              />
-            )}
+        )}
 
-            {/* Step 3: Decision (Progressive Disclosure Result View) */}
-            {activeTab === 'decision' && latestDecision && latestResource && currentUser && currentDevice && (
-              <DecisionPage
-                decision={latestDecision}
-                user={currentUser}
-                device={currentDevice}
-                resource={latestResource}
-                onBack={() => handleTabChange('access')}
-                onRequestJit={() => handleTabChange('access')}
-                onPromptMfa={() => handleTabChange('access')}
-              />
-            )}
+        {/* STEP 2: Device Selection & Posture Compliance */}
+        {isAuthenticated && currentUser && activeTab === 'device' && (
+          <DeviceBindingPage
+            currentUser={currentUser}
+            devices={devices}
+            mfaCode={mfaCode}
+            onBindDevice={handleBindDevice}
+            onBackToLogin={handleLogout}
+          />
+        )}
 
-            {/* TAB 3: Devices (Fleet Health & Toggles) */}
-            {activeTab === 'devices' && (
-              <DevicePostureTab
-                devices={devices}
-                onRefresh={loadData}
-              />
-            )}
+        {/* STEP 3: Request Access (Application Catalog) */}
+        {isAuthenticated && currentUser && activeTab === 'access' && (
+          <AccessPortalTab
+            currentUser={currentUser}
+            currentDevice={currentDevice || devices[0]}
+            mfaCode={mfaCode}
+            resources={resources}
+            onChangeDevice={() => handleTabChange('device')}
+            onSwitchUser={handleLogout}
+            onDecisionGenerated={handleDecisionGenerated}
+          />
+        )}
 
-            {/* TAB 4: Policies (Authorization Matrix) */}
-            {activeTab === 'policies' && (
-              <PolicyStudioTab
-                policies={policies}
-                resources={resources}
-                onRefresh={loadData}
-              />
-            )}
+        {/* STEP 4: Verify & Give JWT Token with User Access */}
+        {isAuthenticated && currentUser && activeTab === 'decision' && latestDecision && latestResource && (
+          <DecisionPage
+            decision={latestDecision}
+            user={currentUser}
+            device={currentDevice || devices[0]}
+            resource={latestResource}
+            onBackToCatalog={() => handleTabChange('access')}
+            onGoToRemainingPages={(tabId) => handleTabChange(tabId)}
+            onRequestJit={() => handleTabChange('access')}
+            onPromptMfa={() => handleTabChange('access')}
+          />
+        )}
 
-            {/* TAB 5: Audit (SIEM & Logs) */}
-            {activeTab === 'audit' && (
-              <SiemDashboardTab
-                metrics={metrics}
-                onRefresh={loadData}
-              />
-            )}
-          </>
+        {/* REMAINING PAGES: Policy Studio */}
+        {isAuthenticated && activeTab === 'policies' && (
+          <PolicyStudioTab
+            policies={policies}
+            resources={resources}
+            onRefresh={loadData}
+          />
+        )}
+
+        {/* REMAINING PAGES: Device Fleet Health */}
+        {isAuthenticated && activeTab === 'devices' && (
+          <DevicePostureTab
+            devices={devices}
+            onRefresh={loadData}
+          />
+        )}
+
+        {/* REMAINING PAGES: SIEM & SOC Audit */}
+        {isAuthenticated && activeTab === 'audit' && (
+          <SiemDashboardTab
+            metrics={metrics}
+            onRefresh={loadData}
+          />
         )}
       </main>
 
