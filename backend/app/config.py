@@ -1,0 +1,7 @@
+import os
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "zero-trust-enterprise-portal-super-secret-key-2026")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+JIT_TOKEN_EXPIRE_MINUTES = 15
+SESSION_EXPIRE_MINUTES = 120
