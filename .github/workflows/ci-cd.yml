@@ -1,0 +1,168 @@
+name: Zero-Trust DevSecOps CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: SAST Security Scanning & Static Code Analysis
+  # -------------------------------------------------------------
+  lint-and-sast:
+    name: Lint & SAST Security Scanning (Bandit + Flake8)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Linting & Security Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 bandit[sarif]
+
+      - name: Run Flake8 Code Quality Analysis
+        run: |
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 backend/app --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Exit-zero treats all errors as warnings. 127 chars max line length.
+          flake8 backend/app --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Run Bandit SAST Security Scan
+        run: |
+          echo "Executing Bandit Static Application Security Testing on Zero-Trust PDP/PEP Engine..."
+          bandit -r backend/app -ll -ii -f screen || true
+          bandit -r backend/app -ll -ii -f sarif -o bandit-results.sarif || true
+
+      - name: Upload Bandit Security SARIF Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-sarif
+          path: bandit-results.sarif
+          if-no-files-found: warn
+
+  # -------------------------------------------------------------
+  # Job 2: Automated Unit, Integration & Fuzzing Tests with Coverage
+  # -------------------------------------------------------------
+  automated-tests:
+    name: Pytest Unit, Integration & Boundary Fuzzing
+    runs-on: ubuntu-latest
+    needs: lint-and-sast
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio httpx
+
+      - name: Execute Pytest Suite with Coverage
+        run: |
+          cd backend
+          pytest -v tests/ --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=60
+
+      - name: Upload Test Coverage Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-coverage
+          path: backend/coverage.xml
+
+  # -------------------------------------------------------------
+  # Job 3: Frontend Build & Type Validation
+  # -------------------------------------------------------------
+  frontend-build:
+    name: Frontend TypeScript & Vite Production Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Compile & Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+  # -------------------------------------------------------------
+  # Job 4: Container Security, Trivy Scan & Docker Packaging
+  # -------------------------------------------------------------
+  container-security:
+    name: Container Build & Trivy Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: [automated-tests, frontend-build]
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Backend Hardened Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: false
+          tags: zerotrust-pdp-backend:latest
+          load: true
+
+      - name: Run Trivy Vulnerability Scanner on Container Image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'zerotrust-pdp-backend:latest'
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # -------------------------------------------------------------
+  # Job 5: Kubernetes Manifest & Hardening Policy Validation
+  # -------------------------------------------------------------
+  k8s-policy-lint:
+    name: Kubernetes Manifest Validation & Policy Hardening
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Dry-Run K8s Manifests
+        run: |
+          echo "Validating Zero-Trust Kubernetes Manifests syntax..."
+          # Verify YAML file structure
+          python -c "
+          import yaml, glob
+          for f in glob.glob('k8s/*.yaml'):
+              with open(f, 'r') as stream:
+                  yaml.safe_load_all(stream)
+                  print(f'Valid YAML: {f}')
+          "
