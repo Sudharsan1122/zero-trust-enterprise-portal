@@ -1,6 +1,12 @@
 # Zero-Trust Enterprise Access Portal (NIST SP 800-207)
 **Software Security Engineering (SSE) Platform — Project 24**
 
+[![Zero-Trust DevSecOps CI/CD Pipeline](https://github.com/Sudharsan1122/zero-trust-enterprise-portal/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Sudharsan1122/zero-trust-enterprise-portal/actions/workflows/ci-cd.yml)
+![NIST SP 800-207](https://img.shields.io/badge/Architecture-NIST%20SP%20800--207-blue)
+![Security-Tests](https://img.shields.io/badge/Pytest-11%2F11%20Passed-brightgreen)
+![Coverage](https://img.shields.io/badge/Coverage-%3E60%25-success)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 An enterprise-grade, simplified **Zero Trust Architecture (ZTA)** platform that continuously evaluates subject identity, endpoint posture, environmental context, and dynamic risk before granting access to internal applications.
 
 ---
