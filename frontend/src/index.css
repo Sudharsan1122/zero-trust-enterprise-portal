@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+:root {
+  /* Fonts */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color-scheme: light;
+
+  /* Backgrounds */
+  --bg-page: #fafbfc;
+  --bg-card: #ffffff;
+  --bg-subtle: #f6f8fa;
+  --bg-hover: #f3f4f6;
+
+  /* Borders */
+  --border-light: #eaecf0;
+  --border-medium: #d0d5dd;
+  --border-strong: #98a2b3;
+
+  /* Text */
+  --text-primary: #101828;
+  --text-secondary: #475467;
+  --text-tertiary: #667085;
+  --text-muted: #98a2b3;
+
+  /* Brand Blue */
+  --brand-50: #eff6ff;
+  --brand-100: #dbeafe;
+  --brand-500: #3b82f6;
+  --brand-600: #2563eb;
+  --brand-700: #1d4ed8;
+  --brand-900: #1e3a8a;
+
+  /* Semantic */
+  --success-50: #ecfdf5;
+  --success-500: #10b981;
+  --success-700: #047857;
+  --danger-50: #fef2f2;
+  --danger-500: #ef4444;
+  --danger-700: #b91c1c;
+  --warning-50: #fffbeb;
+  --warning-500: #f59e0b;
+  --warning-700: #b45309;
+  --info-50: #eff6ff;
+  --info-500: #3b82f6;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
+  --shadow-brand: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  --shadow-danger: 0 0 0 4px rgba(239, 68, 68, 0.12);
+  --shadow-success: 0 0 0 4px rgba(16, 185, 129, 0.12);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Custom polished scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f3f5;
+}
+::-webkit-scrollbar-thumb {
+  background: #d0d5dd;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #98a2b3;
+}
+
+/* Polished Card & Panel Utility Classes */
+.card-modern {
+  background: #ffffff;
+  border: 1px solid #eaecf0;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05), 0 1px 2px rgba(16, 24, 40, 0.03);
+  border-radius: 14px;
+}
+
+.card-interactive {
+  background: #ffffff;
+  border: 1px solid #eaecf0;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 12px;
+}
+.card-interactive:hover {
+  border-color: #d0d5dd;
+  box-shadow: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+  transform: translateY(-1px);
+}
+
+.card-selected {
+  background: #f8faff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb, 0 4px 8px -2px rgba(37, 99, 235, 0.12);
+}
+
+/* High-Impact Decision Card Halos */
+.verdict-halo-allow {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border: 1.5px solid #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12), 0 8px 16px -4px rgba(16, 185, 129, 0.08);
+}
+
+.verdict-halo-deny {
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+  border: 1.5px solid #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.12), 0 8px 16px -4px rgba(239, 68, 68, 0.08);
+}
+
+.verdict-halo-mfa {
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+  border: 1.5px solid #f59e0b;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.12), 0 8px 16px -4px rgba(245, 158, 11, 0.08);
+}
+
+.verdict-halo-jit {
+  background: linear-gradient(135deg, #faf5ff 0%, #ffffff 100%);
+  border: 1.5px solid #8b5cf6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.12), 0 8px 16px -4px rgba(139, 92, 246, 0.08);
+}
+
+/* Linear-style Button */
+.btn-primary-glow {
+  background: #2563eb;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 100%);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border: 1px solid #1d4ed8;
+  transition: all 0.15s ease;
+}
+.btn-primary-glow:hover {
+  background-color: #1d4ed8;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-0.5px);
+}
+.btn-primary-glow:active {
+  transform: translateY(0.5px);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Subtle Shimmer for High-Priority Status */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
